@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Sequence Diagram Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            display: flex;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+
+        .editor-panel {
+            width: 35%;
+            background: white;
+            border-right: 2px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .editor-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .code-editor {
+            flex: 1;
+            border: none;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            background: #f8f9fa;
+        }
+
+        .syntax-help {
+            background: #ecf0f1;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            font-size: 11px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .help-section {
+            margin-bottom: 12px;
+        }
+
+        .help-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 6px;
+        }
+
+        .help-example {
+            font-family: monospace;
+            background: white;
+            padding: 3px 6px;
+            border-radius: 3px;
+            margin: 2px 0;
+            display: block;
+            border-left: 3px solid #3498db;
+        }
+
+        .diagram-panel {
+            flex: 1;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .diagram-header {
+            background: #34495e;
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .diagram-container {
+            flex: 1;
+            padding: 20px;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        #diagram-svg {
+            border: 1px solid #ddd;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .participant-box {
+            fill: #e8f4fd;
+            stroke: #1f77b4;
+            stroke-width: 2;
+            rx: 8;
+            ry: 8;
+        }
+
+        .participant-text {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            font-weight: bold;
+            text-anchor: middle;
+            fill: #2c3e50;
+        }
+
+        .lifeline {
+            stroke: #bdc3c7;
+            stroke-width: 2;
+            stroke-dasharray: 6,3;
+        }
+
+        .activation {
+            fill: #fff3cd;
+            stroke: #856404;
+            stroke-width: 1.5;
+        }
+
+        .message-line {
+            stroke: #2c3e50;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .message-dashed {
+            stroke-dasharray: 8,4;
+        }
+
+        .message-return {
+            stroke: #7f8c8d;
+        }
+
+        .arrow {
+            fill: #2c3e50;
+            stroke: #2c3e50;
+        }
+
+        .arrow-return {
+            fill: #7f8c8d;
+            stroke: #7f8c8d;
+        }
+
+        .message-text {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            text-anchor: middle;
+            fill: #2c3e50;
+        }
+
+        .note {
+            fill: #fff3cd;
+            stroke: #ffc107;
+            stroke-width: 1.5;
+            rx: 5;
+            ry: 5;
+        }
+
+        .note-text {
+            font-family: Arial, sans-serif;
+            font-size: 10px;
+            fill: #212529;
+        }
+
+        .loop-box {
+            fill: none;
+            stroke: #6c757d;
+            stroke-width: 2;
+            rx: 5;
+            ry: 5;
+        }
+
+        .loop-label {
+            fill: #f8f9fa;
+            stroke: #6c757d;
+            stroke-width: 1;
+        }
+
+        .loop-text {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+            fill: #495057;
+        }
+
+        .alt-box {
+            fill: none;
+            stroke: #dc3545;
+            stroke-width: 2;
+            rx: 5;
+            ry: 5;
+        }
+
+        .alt-label {
+            fill: #f8d7da;
+            stroke: #dc3545;
+            stroke-width: 1;
+        }
+
+        .alt-text {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+            fill: #721c24;
+        }
+
+        .title-text {
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            text-anchor: middle;
+            fill: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="editor-panel">
+            <div class="editor-header">
+                Sequence Diagram Editor
+            </div>
+            <div class="editor-content">
+                <textarea class="code-editor" id="codeEditor" placeholder="Enter your sequence diagram code here...">title: Login Process
+
+participant User
+participant Frontend
+participant Backend
+participant Database
+
+User->Frontend: Enter credentials
+activate Frontend
+Frontend->Backend: Validate login
+activate Backend
+Backend->Database: Check user
+activate Database
+Database-->Backend: User found
+deactivate Database
+Backend-->Frontend: Login success
+deactivate Backend
+Frontend-->User: Show dashboard
+deactivate Frontend
+
+note over User, Database: This is a note spanning multiple participants
+
+loop retry
+    User->Frontend: Retry on failure
+    Frontend->Backend: Attempt again
+end
+
+alt successful login
+    Backend->Frontend: Return token
+else failed login
+    Backend->Frontend: Return error
+end</textarea>
+                <div class="syntax-help">
+                    <div class="help-section">
+                        <div class="help-title">Basic Syntax:</div>
+                        <code class="help-example">title: Your Diagram Title</code>
+                        <code class="help-example">participant Alice</code>
+                        <code class="help-example">Alice->Bob: Message</code>
+                        <code class="help-example">Bob-->Alice: Response (dashed)</code>
+                    </div>
+                    <div class="help-section">
+                        <div class="help-title">Activation:</div>
+                        <code class="help-example">activate Alice</code>
+                        <code class="help-example">deactivate Alice</code>
+                    </div>
+                    <div class="help-section">
+                        <div class="help-title">Notes:</div>
+                        <code class="help-example">note over Alice: Note text</code>
+                        <code class="help-example">note left of Alice: Left note</code>
+                        <code class="help-example">note right of Bob: Right note</code>
+                    </div>
+                    <div class="help-section">
+                        <div class="help-title">Loops & Alternatives:</div>
+                        <code class="help-example">loop condition<br>&nbsp;&nbsp;Alice->Bob: Message<br>end</code>
+                        <code class="help-example">alt condition<br>&nbsp;&nbsp;Alice->Bob: Option 1<br>else<br>&nbsp;&nbsp;Alice->Bob: Option 2<br>end</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="diagram-panel">
+            <div class="diagram-header">
+                Generated Diagram
+            </div>
+            <div class="diagram-container">
+                <svg id="diagram-svg" width="800" height="600">
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                         refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#2c3e50" />
+                        </marker>
+                        <marker id="arrowhead-dashed" markerWidth="10" markerHeight="7" 
+                         refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#7f8c8d" />
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SequenceDiagramRenderer {
+            constructor(svgElement) {
+                this.svg = svgElement;
+                this.participants = [];
+                this.messages = [];
+                this.notes = [];
+                this.activations = new Map();
+                this.loops = [];
+                this.alts = [];
+                this.title = '';
+                
+                this.config = {
+                    participantWidth: 120,
+                    participantHeight: 40,
+                    participantSpacing: 150,
+                    messageSpacing: 50,
+                    startY: 80,
+                    participantY: 40,
+                    noteWidth: 100,
+                    noteHeight: 60,
+                    activationWidth: 12,
+                    margin: 50
+                };
+            }
+
+            parse(text) {
+                this.reset();
+                const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+                
+                let loopStack = [];
+                let altStack = [];
+                
+                for (let line of lines) {
+                    if (line.startsWith('title:')) {
+                        this.title = line.substring(6).trim();
+                    } else if (line.startsWith('participant ')) {
+                        const name = line.substring(11).trim();
+                        if (!this.participants.includes(name)) {
+                            this.participants.push(name);
+                        }
+                    } else if (line.includes('->') || line.includes('-->')) {
+                        this.parseMessage(line);
+                    } else if (line.startsWith('activate ')) {
+                        const participant = line.substring(9).trim();
+                        if (!this.activations.has(participant)) {
+                            this.activations.set(participant, []);
+                        }
+                        this.activations.get(participant).push({ type: 'activate', messageIndex: this.messages.length });
+                    } else if (line.startsWith('deactivate ')) {
+                        const participant = line.substring(11).trim();
+                        if (this.activations.has(participant)) {
+                            this.activations.get(participant).push({ type: 'deactivate', messageIndex: this.messages.length });
+                        }
+                    } else if (line.startsWith('note ')) {
+                        this.parseNote(line);
+                    } else if (line.startsWith('loop ')) {
+                        const condition = line.substring(5).trim();
+                        loopStack.push({ type: 'loop', condition, startIndex: this.messages.length });
+                    } else if (line.startsWith('alt ')) {
+                        const condition = line.substring(4).trim();
+                        altStack.push({ type: 'alt', condition, startIndex: this.messages.length, branches: [condition] });
+                    } else if (line === 'else' && altStack.length > 0) {
+                        const currentAlt = altStack[altStack.length - 1];
+                        currentAlt.elseIndex = this.messages.length;
+                        currentAlt.branches.push('else');
+                    } else if (line === 'end') {
+                        if (loopStack.length > 0) {
+                            const loop = loopStack.pop();
+                            loop.endIndex = this.messages.length - 1;
+                            this.loops.push(loop);
+                        } else if (altStack.length > 0) {
+                            const alt = altStack.pop();
+                            alt.endIndex = this.messages.length - 1;
+                            this.alts.push(alt);
+                        }
+                    }
+                }
+            }
+
+            parseMessage(line) {
+                let isDashed = line.includes('-->');
+                let parts = isDashed ? line.split('-->') : line.split('->');
+                
+                if (parts.length === 2) {
+                    let from = parts[0].trim();
+                    let [to, message] = parts[1].split(':').map(s => s.trim());
+                    
+                    // Auto-add participants if they don't exist
+                    if (!this.participants.includes(from)) {
+                        this.participants.push(from);
+                    }
+                    if (!this.participants.includes(to)) {
+                        this.participants.push(to);
+                    }
+                    
+                    this.messages.push({ from, to, message: message || '', isDashed });
+                }
+            }
+
+            parseNote(line) {
+                const parts = line.split(':');
+                const noteText = parts[1] ? parts[1].trim() : '';
+                const noteDef = parts[0].trim();
+                
+                if (noteDef.includes('over ')) {
+                    const participants = noteDef.substring(noteDef.indexOf('over ') + 5).split(',').map(p => p.trim());
+                    this.notes.push({ 
+                        type: 'over', 
+                        participants, 
+                        text: noteText, 
+                        messageIndex: this.messages.length 
+                    });
+                } else if (noteDef.includes('left of ')) {
+                    const participant = noteDef.substring(noteDef.indexOf('left of ') + 8).trim();
+                    this.notes.push({ 
+                        type: 'left', 
+                        participant, 
+                        text: noteText, 
+                        messageIndex: this.messages.length 
+                    });
+                } else if (noteDef.includes('right of ')) {
+                    const participant = noteDef.substring(noteDef.indexOf('right of ') + 9).trim();
+                    this.notes.push({ 
+                        type: 'right', 
+                        participant, 
+                        text: noteText, 
+                        messageIndex: this.messages.length 
+                    });
+                }
+            }
+
+            reset() {
+                this.participants = [];
+                this.messages = [];
+                this.notes = [];
+                this.activations.clear();
+                this.loops = [];
+                this.alts = [];
+                this.title = '';
+            }
+
+            render() {
+                // Clear SVG but preserve the defs
+                const defs = this.svg.querySelector('defs');
+                this.svg.innerHTML = '';
+                this.svg.appendChild(defs);
+                
+                if (this.participants.length === 0) return;
+
+                let currentY = this.config.startY;
+                
+                // Render title
+                if (this.title) {
+                    this.renderTitle();
+                    currentY += 40;
+                }
+
+                // Calculate participant positions
+                const participantPositions = new Map();
+                this.participants.forEach((participant, index) => {
+                    const x = this.config.margin + index * this.config.participantSpacing + this.config.participantWidth / 2;
+                    participantPositions.set(participant, x);
+                });
+
+                // Render participants
+                this.renderParticipants(participantPositions, currentY);
+                currentY += this.config.participantHeight + 30;
+
+                // Calculate total diagram height needed
+                let totalHeight = currentY + this.messages.length * this.config.messageSpacing + 100;
+                
+                // Render lifelines
+                this.renderLifelines(participantPositions, currentY, totalHeight);
+
+                // Render activations, messages, notes, loops, and alts
+                currentY = this.renderMessagesAndElements(participantPositions, currentY);
+
+                // Update SVG dimensions
+                const width = Math.max(800, this.config.margin * 2 + this.participants.length * this.config.participantSpacing);
+                const height = Math.max(600, currentY + 100);
+                this.svg.setAttribute('width', width);
+                this.svg.setAttribute('height', height);
+            }
+
+            renderTitle() {
+                const titleElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                titleElement.setAttribute('x', 400);
+                titleElement.setAttribute('y', 30);
+                titleElement.setAttribute('class', 'title-text');
+                titleElement.textContent = this.title;
+                this.svg.appendChild(titleElement);
+            }
+
+            renderParticipants(positions, y) {
+                positions.forEach((x, participant) => {
+                    // Participant box
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', x - this.config.participantWidth / 2);
+                    rect.setAttribute('y', y);
+                    rect.setAttribute('width', this.config.participantWidth);
+                    rect.setAttribute('height', this.config.participantHeight);
+                    rect.setAttribute('class', 'participant-box');
+                    this.svg.appendChild(rect);
+
+                    // Participant text
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', x);
+                    text.setAttribute('y', y + this.config.participantHeight / 2 + 4);
+                    text.setAttribute('class', 'participant-text');
+                    text.textContent = participant;
+                    this.svg.appendChild(text);
+                });
+            }
+
+            renderLifelines(positions, startY, endY) {
+                positions.forEach((x, participant) => {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', x);
+                    line.setAttribute('y1', startY + this.config.participantHeight);
+                    line.setAttribute('x2', x);
+                    line.setAttribute('y2', endY);
+                    line.setAttribute('class', 'lifeline');
+                    this.svg.appendChild(line);
+                });
+            }
+
+            renderMessagesAndElements(positions, startY) {
+                let currentY = startY;
+                
+                for (let i = 0; i < this.messages.length; i++) {
+                    // Render activations for this message
+                    this.renderActivationsAtMessage(positions, i, currentY);
+                    
+                    // Render notes before this message
+                    const notesAtThisIndex = this.notes.filter(note => note.messageIndex === i);
+                    for (const note of notesAtThisIndex) {
+                        currentY += 20;
+                        this.renderNote(note, positions, currentY);
+                        currentY += this.config.noteHeight + 20;
+                    }
+
+                    // Check for loop/alt start
+                    const loopAtThisIndex = this.loops.find(loop => loop.startIndex === i);
+                    const altAtThisIndex = this.alts.find(alt => alt.startIndex === i);
+                    
+                    if (loopAtThisIndex) {
+                        currentY += 30;
+                        this.renderLoopStart(loopAtThisIndex, positions, currentY);
+                        currentY += 30;
+                    }
+                    
+                    if (altAtThisIndex) {
+                        currentY += 30;
+                        this.renderAltStart(altAtThisIndex, positions, currentY);
+                        currentY += 30;
+                    }
+
+                    // Render message
+                    this.renderMessage(this.messages[i], positions, currentY);
+                    currentY += this.config.messageSpacing;
+
+                    // Check for alt else
+                    const altWithElse = this.alts.find(alt => alt.elseIndex === i);
+                    if (altWithElse) {
+                        this.renderAltElse(altWithElse, positions, currentY);
+                        currentY += 20;
+                    }
+
+                    // Check for loop/alt end
+                    const loopEndAtThisIndex = this.loops.find(loop => loop.endIndex === i);
+                    const altEndAtThisIndex = this.alts.find(alt => alt.endIndex === i);
+                    
+                    if (loopEndAtThisIndex || altEndAtThisIndex) {
+                        currentY += 20;
+                    }
+                }
+
+                return currentY;
+            }
+
+            renderMessage(message, positions, y) {
+                const fromX = positions.get(message.from);
+                const toX = positions.get(message.to);
+                
+                // Determine arrow marker based on message type
+                const markerUrl = message.isDashed ? 'url(#arrowhead-dashed)' : 'url(#arrowhead)';
+                
+                // Message line with arrow marker
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', fromX);
+                line.setAttribute('y1', y);
+                line.setAttribute('x2', toX);
+                line.setAttribute('y2', y);
+                line.setAttribute('marker-end', markerUrl);
+                
+                if (message.isDashed) {
+                    line.setAttribute('class', 'message-line message-dashed message-return');
+                } else {
+                    line.setAttribute('class', 'message-line');
+                }
+                
+                this.svg.appendChild(line);
+
+                // Message text
+                if (message.message) {
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', (fromX + toX) / 2);
+                    text.setAttribute('y', y - 8);
+                    text.setAttribute('class', 'message-text');
+                    
+                    // Add background rectangle for better text readability
+                    const bbox = this.getTextBoundingBox(message.message, 11);
+                    const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    bgRect.setAttribute('x', (fromX + toX) / 2 - bbox.width / 2 - 2);
+                    bgRect.setAttribute('y', y - 8 - bbox.height / 2 - 2);
+                    bgRect.setAttribute('width', bbox.width + 4);
+                    bgRect.setAttribute('height', bbox.height + 4);
+                    bgRect.setAttribute('fill', 'white');
+                    bgRect.setAttribute('stroke', 'none');
+                    this.svg.appendChild(bgRect);
+                    
+                    text.textContent = message.message;
+                    this.svg.appendChild(text);
+                }
+            }
+
+            getTextBoundingBox(text, fontSize) {
+                // Approximate text dimensions
+                return {
+                    width: text.length * fontSize * 0.6,
+                    height: fontSize
+                };
+            }
+
+            renderNote(note, positions, y) {
+                let x, width;
+                
+                if (note.type === 'over') {
+                    const firstParticipant = note.participants[0];
+                    const lastParticipant = note.participants[note.participants.length - 1];
+                    const startX = positions.get(firstParticipant);
+                    const endX = positions.get(lastParticipant);
+                    x = Math.min(startX, endX) - this.config.noteWidth / 2;
+                    width = Math.abs(endX - startX) + this.config.noteWidth;
+                } else {
+                    const participantX = positions.get(note.participant);
+                    width = this.config.noteWidth;
+                    if (note.type === 'left') {
+                        x = participantX - width - 20;
+                    } else {
+                        x = participantX + 20;
+                    }
+                }
+
+                // Note box
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', x);
+                rect.setAttribute('y', y);
+                rect.setAttribute('width', width);
+                rect.setAttribute('height', this.config.noteHeight);
+                rect.setAttribute('class', 'note');
+                this.svg.appendChild(rect);
+
+                // Note text (with word wrapping for long text)
+                this.renderWrappedText(note.text, x + width / 2, y + this.config.noteHeight / 2, width - 10, 'note-text');
+            }
+
+            renderWrappedText(text, x, y, maxWidth, className) {
+                const words = text.split(' ');
+                const lines = [];
+                let currentLine = '';
+                
+                // Simple word wrapping
+                for (const word of words) {
+                    const testLine = currentLine ? `\${currentLine} \${word}` : word;
+                    if (testLine.length * 6 <= maxWidth) {
+                        currentLine = testLine;
+                    } else {
+                        if (currentLine) lines.push(currentLine);
+                        currentLine = word;
+                    }
+                }
+                if (currentLine) lines.push(currentLine);
+
+                // Render each line
+                const lineHeight = 12;
+                const startY = y - (lines.length - 1) * lineHeight / 2;
+                
+                lines.forEach((line, index) => {
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', x);
+                    text.setAttribute('y', startY + index * lineHeight);
+                    text.setAttribute('class', className);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.textContent = line;
+                    this.svg.appendChild(text);
+                });
+            }
+
+            renderActivationsAtMessage(positions, messageIndex, y) {
+                this.activations.forEach((events, participant) => {
+                    const participantX = positions.get(participant);
+                    events.forEach(event => {
+                        if (event.messageIndex === messageIndex) {
+                            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                            rect.setAttribute('x', participantX - this.config.activationWidth / 2);
+                            rect.setAttribute('y', y - 10);
+                            rect.setAttribute('width', this.config.activationWidth);
+                            rect.setAttribute('height', 20);
+                            rect.setAttribute('class', 'activation');
+                            this.svg.appendChild(rect);
+                        }
+                    });
+                });
+            }
+
+            renderLoopStart(loop, positions, y) {
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', this.config.margin);
+                rect.setAttribute('y', y - 15);
+                rect.setAttribute('width', 80);
+                rect.setAttribute('height', 20);
+                rect.setAttribute('class', 'loop-label');
+                this.svg.appendChild(rect);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', this.config.margin + 40);
+                text.setAttribute('y', y);
+                text.setAttribute('class', 'loop-text');
+                text.setAttribute('text-anchor', 'middle');
+                text.textContent = `loop \${loop.condition}`;
+                this.svg.appendChild(text);
+            }
+
+            renderAltStart(alt, positions, y) {
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', this.config.margin);
+                rect.setAttribute('y', y - 15);
+                rect.setAttribute('width', 80);
+                rect.setAttribute('height', 20);
+                rect.setAttribute('class', 'alt-label');
+                this.svg.appendChild(rect);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', this.config.margin + 40);
+                text.setAttribute('y', y);
+                text.setAttribute('class', 'alt-text');
+                text.setAttribute('text-anchor', 'middle');
+                text.textContent = `alt \${alt.condition}`;
+                this.svg.appendChild(text);
+            }
+
+            renderAltElse(alt, positions, y) {
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', this.config.margin);
+                rect.setAttribute('y', y - 15);
+                rect.setAttribute('width', 40);
+                rect.setAttribute('height', 20);
+                rect.setAttribute('class', 'alt-label');
+                this.svg.appendChild(rect);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', this.config.margin + 20);
+                text.setAttribute('y', y);
+                text.setAttribute('class', 'alt-text');
+                text.setAttribute('text-anchor', 'middle');
+                text.textContent = 'else';
+                this.svg.appendChild(text);
+            }
+        }
+
+        // Initialize the editor
+        const svgElement = document.getElementById('diagram-svg');
+        const codeEditor = document.getElementById('codeEditor');
+        const renderer = new SequenceDiagramRenderer(svgElement);
+
+        function updateDiagram() {
+            const code = codeEditor.value;
+            renderer.parse(code);
+            renderer.render();
+        }
+
+        // Update diagram on input
+        codeEditor.addEventListener('input', updateDiagram);
+
+        // Initial render
+        updateDiagram();
+    </script>
+</body>
+</html>
